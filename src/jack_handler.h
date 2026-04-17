@@ -10,6 +10,8 @@ public:
 
     void watch(const std::atomic<bool>&);
 
+    void bootstrap();
+
 private:
     struct Impl;
     std::unique_ptr<Impl> impl;

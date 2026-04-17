@@ -116,11 +116,51 @@ struct JackHandler::Impl
                     cout << "Registered card " << v << ";\n";
                 }
                 else if (k == "device") processingCard->deviceName = v;
-                else if(k == "rate") processingCard->rate = utils::parse_int(v);
-                else if(k == "period") processingCard->period = utils::parse_int(v);
-                else if(k == "nperiod") processingCard->nperiod = utils::parse_int(v);
-                else if(k == "inputs") processingCard->inputs = utils::parse_int(v);
-                else if(k == "outputs") processingCard->outputs = utils::parse_int(v);
+                else if (k == "rate") processingCard->rate = utils::parse_int(v);
+                else if (k == "period") processingCard->period = utils::parse_int(v);
+                else if (k == "nperiod") processingCard->nperiod = utils::parse_int(v);
+                else if (k == "inputs") processingCard->inputs = utils::parse_int(v);
+                else if (k == "outputs") processingCard->outputs = utils::parse_int(v);
+            }
+        }
+    }
+
+    vector<string> getAlsaCards(){
+        ifstream file("/proc/asound/cards");
+        vector<string> result;
+
+        if (!file.is_open())
+            return result;
+
+        string line;
+        while (getline(file, line)) {
+            // " 0 [Device     ]: USB-Audio - Device Name"
+            auto lb = line.find('[');
+            auto rb = line.find(']');
+
+            if (lb != string::npos && rb != string::npos && rb > lb) {
+                string name = line.substr(lb + 1, rb - lb - 1);
+
+                while (!name.empty() && isspace(name.back())) name.pop_back();
+                while (!name.empty() && isspace(name.front())) name.erase(name.begin());
+
+                result.push_back(name);
+            }
+        }
+
+        return result;
+    }
+
+    void startConnectedCard() {
+        auto alsaCards = getAlsaCards();
+        for (auto& cfg : registeredCards) {
+            cout << "Checking if " << cfg.deviceName << " is connected...\n";
+            for (auto& sysCard : alsaCards) {
+                if (cfg.deviceName == sysCard) {
+                    cout << "Device found; Attempting to connect...\n";
+                    asyncProcess(Action::SPAWN, cfg.systemId, "");
+                    return;
+                }
             }
         }
     }
@@ -176,7 +216,7 @@ struct JackHandler::Impl
 
                 if (action == "bind" && model_) {
                     asyncProcess(Action::SPAWN, model, devPath);
-                } else if (action == "remove" && devPath == activeDevPath) {
+                } else if (action == "remove" && (devPath == activeDevPath || devPath.empty())) {
                     asyncProcess(Action::KILL, model, devPath);
                 }
                 udev_device_unref(dev);
@@ -265,4 +305,8 @@ JackHandler::JackHandler(const string& configPath)
 
 void JackHandler::watch(const atomic<bool>& shouldQuit) {
     impl->watchUdev(shouldQuit);
+}
+
+void JackHandler::bootstrap() {
+    impl->startConnectedCard();
 }

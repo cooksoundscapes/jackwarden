@@ -48,15 +48,22 @@ device: DeviceName
 
 This allows jack-warden to bind the correct JACK device.)");
 
+    bool noAutoConnect = false;
+
     app.add_option(
         "-c, --config-file", 
         configPath, 
         "Configuration file for sound cards"
     )->check(CLI::ExistingFile);
 
+    app.add_flag("--no-autoconnect", noAutoConnect, "Prevent starting JACK on start");
+
     CLI11_PARSE(app, argc, argv);
 
     JackHandler jackHandler(configPath);
+
+    if (!noAutoConnect)
+        jackHandler.bootstrap();
 
     jackHandler.watch(shouldQuit);
 
