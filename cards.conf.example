@@ -1,0 +1,13 @@
+[card]
+system: U-22
+device: U22
+rate: 48000
+period: 256
+nperiod: 2
+
+[card]
+system: UMC404HD_192k
+device: U192k
+rate: 96000
+period: 128
+nperiod: 3
